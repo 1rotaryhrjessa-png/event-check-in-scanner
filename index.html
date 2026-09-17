@@ -1,0 +1,519 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+  <meta charset="UTF-8">
+
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0"
+  >
+
+  <title>Event 2026 Check-In</title>
+
+  <script src="https://unpkg.com/html5-qrcode"></script>
+
+  <style>
+
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+      margin: 0;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .container {
+      max-width: 500px;
+      margin: auto;
+      background: white;
+      padding: 25px;
+      border-radius: 16px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+    }
+
+    h1 {
+      margin-top: 0;
+    }
+
+    #reader {
+      width: 100%;
+      margin-top: 20px;
+    }
+
+    button {
+      width: 100%;
+      padding: 14px;
+      margin-top: 15px;
+      font-size: 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    #startButton {
+      background: #222;
+      color: white;
+    }
+
+    #stopButton {
+      background: #ddd;
+      color: #222;
+    }
+
+    #result {
+      margin-top: 20px;
+      padding: 20px;
+      border-radius: 10px;
+      font-size: 18px;
+      font-weight: bold;
+      display: none;
+    }
+
+    .success {
+      background: #dff5e1;
+      color: #176b2c;
+    }
+
+    .error {
+      background: #f8dddd;
+      color: #9b1c1c;
+    }
+
+    .info {
+      background: #e5eefc;
+      color: #174a8b;
+    }
+
+    .guest {
+      margin-top: 15px;
+      text-align: left;
+      font-weight: normal;
+    }
+
+    .guest strong {
+      display: inline-block;
+      width: 150px;
+    }
+
+  </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+  <h1>Event 2026</h1>
+
+  <h2>Guest Check-In</h2>
+
+  <p>
+    Scan the guest's QR code.
+  </p>
+
+  <div id="reader"></div>
+
+  <button id="startButton">
+    START CAMERA
+  </button>
+
+  <button id="stopButton">
+    STOP CAMERA
+  </button>
+
+  <div id="result"></div>
+
+</div>
+
+<script>
+
+  // ============================================================
+  // IMPORTANT:
+  // Replace this with your Google Apps Script Web App /exec URL.
+  // ============================================================
+
+  const APPS_SCRIPT_URL =
+    "https://script.google.com/macros/s/AKfycby1gFiDeuGOw-edrxMjmbgON_-XhI_Uba-RXzIo-xwPlcGLC0VOME8Tc1Zpi32MSJZUzQ/exec";
+
+
+  let scanner = null;
+  let scannerRunning = false;
+  let processingScan = false;
+
+
+  // ------------------------------------------------------------
+  // Show result
+  // ------------------------------------------------------------
+
+  function showResult(type, html) {
+
+    const result =
+      document.getElementById("result");
+
+    result.className = type;
+    result.innerHTML = html;
+    result.style.display = "block";
+
+  }
+
+
+  // ------------------------------------------------------------
+  // Start camera
+  // ------------------------------------------------------------
+
+  async function startScanner() {
+
+    if (scannerRunning) {
+      return;
+    }
+
+    if (
+      APPS_SCRIPT_URL.includes(
+        "PASTE_YOUR_APPS_SCRIPT"
+      )
+    ) {
+
+      showResult(
+        "error",
+        "Google Apps Script URL has not been added yet."
+      );
+
+      return;
+    }
+
+
+    showResult(
+      "info",
+      "Starting camera..."
+    );
+
+
+    try {
+
+      const cameras =
+        await Html5Qrcode.getCameras();
+
+
+      if (!cameras || cameras.length === 0) {
+
+        showResult(
+          "error",
+          "No camera was found."
+        );
+
+        return;
+      }
+
+
+      let cameraId =
+        cameras[0].id;
+
+
+      // Prefer rear/environment camera
+
+      const rearCamera =
+        cameras.find(camera =>
+          /back|rear|environment/i
+            .test(camera.label)
+        );
+
+
+      if (rearCamera) {
+        cameraId = rearCamera.id;
+      }
+
+
+      scanner =
+        new Html5Qrcode("reader");
+
+
+      await scanner.start(
+
+        cameraId,
+
+        {
+          fps: 10,
+          qrbox: {
+            width: 250,
+            height: 250
+          }
+        },
+
+        decodedText => {
+
+          if (processingScan) {
+            return;
+          }
+
+          processingScan = true;
+
+          handleQRCode(decodedText);
+
+        },
+
+        errorMessage => {
+          // Ignore normal QR scanning errors.
+        }
+
+      );
+
+
+      scannerRunning = true;
+
+      showResult(
+        "info",
+        "Camera ready. Scan the guest QR code."
+      );
+
+    } catch (error) {
+
+      console.error(error);
+
+      showResult(
+        "error",
+        "Camera could not start.<br><br>" +
+        error.message
+      );
+
+      scannerRunning = false;
+
+    }
+
+  }
+
+
+  // ------------------------------------------------------------
+  // Stop camera
+  // ------------------------------------------------------------
+
+  async function stopScanner() {
+
+    if (!scanner || !scannerRunning) {
+      return;
+    }
+
+    try {
+
+      await scanner.stop();
+
+      scanner.clear();
+
+    } catch (error) {
+
+      console.error(error);
+
+    }
+
+    scannerRunning = false;
+
+  }
+
+
+  // ------------------------------------------------------------
+  // QR scanned
+  // ------------------------------------------------------------
+
+  async function handleQRCode(code) {
+
+    showResult(
+      "info",
+      "QR detected.<br>Checking guest..."
+    );
+
+
+    await stopScanner();
+
+
+    try {
+
+      const response =
+        await fetch(
+          APPS_SCRIPT_URL,
+          {
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "text/plain;charset=utf-8"
+            },
+
+            body: JSON.stringify({
+              code: code
+            })
+          }
+        );
+
+
+      const result =
+        await response.json();
+
+
+      displayCheckInResult(result);
+
+
+    } catch (error) {
+
+      console.error(error);
+
+      showResult(
+        "error",
+        "Could not connect to the check-in system.<br><br>" +
+        error.message
+      );
+
+    }
+
+
+    processingScan = false;
+
+  }
+
+
+  // ------------------------------------------------------------
+  // Display check-in response
+  // ------------------------------------------------------------
+
+  function displayCheckInResult(result) {
+
+    if (!result) {
+
+      showResult(
+        "error",
+        "No response received."
+      );
+
+      return;
+    }
+
+
+    if (
+      result.status ===
+      "SUCCESS"
+    ) {
+
+      showResult(
+        "success",
+
+        "CHECK-IN SUCCESSFUL" +
+
+        '<div class="guest">' +
+
+        "<strong>Name:</strong> " +
+        escapeHtml(result.name) +
+        "<br><br>" +
+
+        "<strong>ID:</strong> " +
+        escapeHtml(result.id) +
+        "<br><br>" +
+
+        "<strong>Guest Type:</strong> " +
+        escapeHtml(result.guestType || "") +
+        "<br><br>" +
+
+        "<strong>Check-in Time:</strong> " +
+        escapeHtml(result.checkInTime || "") +
+
+        "</div>"
+      );
+
+      return;
+    }
+
+
+    if (
+      result.status ===
+      "ALREADY_CHECKED_IN"
+    ) {
+
+      showResult(
+        "error",
+
+        "ALREADY CHECKED IN" +
+
+        '<div class="guest">' +
+
+        "<strong>Name:</strong> " +
+        escapeHtml(result.name) +
+        "<br><br>" +
+
+        "<strong>ID:</strong> " +
+        escapeHtml(result.id) +
+        "<br><br>" +
+
+        "<strong>Previous Check-in:</strong> " +
+        escapeHtml(result.checkInTime || "") +
+
+        "</div>"
+      );
+
+      return;
+    }
+
+
+    if (
+      result.status ===
+      "NOT_REGISTERED"
+    ) {
+
+      showResult(
+        "error",
+        "NOT REGISTERED"
+      );
+
+      return;
+    }
+
+
+    showResult(
+      "error",
+      escapeHtml(
+        result.message ||
+        "Check-in failed."
+      )
+    );
+
+  }
+
+
+  // ------------------------------------------------------------
+  // Basic HTML escaping
+  // ------------------------------------------------------------
+
+  function escapeHtml(value) {
+
+    return String(value || "")
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+
+  }
+
+
+  // ------------------------------------------------------------
+  // Buttons
+  // ------------------------------------------------------------
+
+  document
+    .getElementById("startButton")
+    .addEventListener(
+      "click",
+      startScanner
+    );
+
+
+  document
+    .getElementById("stopButton")
+    .addEventListener(
+      "click",
+      stopScanner
+    );
+
+</script>
+
+</body>
+
+</html>
