@@ -10,7 +10,7 @@
     content="width=device-width, initial-scale=1.0"
   >
 
-  <title>Event 2026 Check-In</title>
+  <title>Thanksgiving Party 2026 Check-In</title>
 
   <script src="https://unpkg.com/html5-qrcode"></script>
 
@@ -94,7 +94,11 @@
 
     .guest strong {
       display: inline-block;
-      width: 150px;
+      width: 160px;
+    }
+
+    .gift {
+      font-weight: bold;
     }
 
   </style>
@@ -105,7 +109,7 @@
 
 <div class="container">
 
-  <h1>Event 2026</h1>
+  <h1>Thanksgiving Party 2026</h1>
 
   <h2>Guest Check-In</h2>
 
@@ -127,25 +131,27 @@
 
 </div>
 
+
 <script>
 
   // ============================================================
-  // IMPORTANT:
-  // Replace this with your Google Apps Script Web App /exec URL.
+  // GOOGLE APPS SCRIPT WEB APP URL
   // ============================================================
 
   const APPS_SCRIPT_URL =
-    "https://script.google.com/macros/s/AKfycby1gFiDeuGOw-edrxMjmbgON_-XhI_Uba-RXzIo-xwPlcGLC0VOME8Tc1Zpi32MSJZUzQ/exec";
+    "https://script.google.com/macros/s/AKfycby1gFiDeuGOw-edrxMjmbgON_-XhI_Uba-RXzIo-xwPlCGLC0VOME8Tc1Zpi32MSJZUzQ/exec";
 
 
   let scanner = null;
+
   let scannerRunning = false;
+
   let processingScan = false;
 
 
-  // ------------------------------------------------------------
-  // Show result
-  // ------------------------------------------------------------
+  // ============================================================
+  // SHOW RESULT
+  // ============================================================
 
   function showResult(type, html) {
 
@@ -153,21 +159,24 @@
       document.getElementById("result");
 
     result.className = type;
+
     result.innerHTML = html;
+
     result.style.display = "block";
 
   }
 
 
-  // ------------------------------------------------------------
-  // Start camera
-  // ------------------------------------------------------------
+  // ============================================================
+  // START CAMERA
+  // ============================================================
 
   async function startScanner() {
 
     if (scannerRunning) {
       return;
     }
+
 
     if (
       APPS_SCRIPT_URL.includes(
@@ -196,7 +205,10 @@
         await Html5Qrcode.getCameras();
 
 
-      if (!cameras || cameras.length === 0) {
+      if (
+        !cameras ||
+        cameras.length === 0
+      ) {
 
         showResult(
           "error",
@@ -214,14 +226,18 @@
       // Prefer rear/environment camera
 
       const rearCamera =
-        cameras.find(camera =>
-          /back|rear|environment/i
-            .test(camera.label)
+        cameras.find(
+          camera =>
+            /back|rear|environment/i
+              .test(camera.label)
         );
 
 
       if (rearCamera) {
-        cameraId = rearCamera.id;
+
+        cameraId =
+          rearCamera.id;
+
       }
 
 
@@ -235,6 +251,7 @@
 
         {
           fps: 10,
+
           qrbox: {
             width: 250,
             height: 250
@@ -254,7 +271,9 @@
         },
 
         errorMessage => {
-          // Ignore normal QR scanning errors.
+
+          // Normal scanning errors are ignored.
+
         }
 
       );
@@ -262,20 +281,24 @@
 
       scannerRunning = true;
 
+
       showResult(
         "info",
         "Camera ready. Scan the guest QR code."
       );
 
+
     } catch (error) {
 
       console.error(error);
+
 
       showResult(
         "error",
         "Camera could not start.<br><br>" +
         error.message
       );
+
 
       scannerRunning = false;
 
@@ -284,15 +307,21 @@
   }
 
 
-  // ------------------------------------------------------------
-  // Stop camera
-  // ------------------------------------------------------------
+  // ============================================================
+  // STOP CAMERA
+  // ============================================================
 
   async function stopScanner() {
 
-    if (!scanner || !scannerRunning) {
+    if (
+      !scanner ||
+      !scannerRunning
+    ) {
+
       return;
+
     }
+
 
     try {
 
@@ -306,14 +335,15 @@
 
     }
 
+
     scannerRunning = false;
 
   }
 
 
-  // ------------------------------------------------------------
-  // QR scanned
-  // ------------------------------------------------------------
+  // ============================================================
+  // QR SCANNED
+  // ============================================================
 
   async function handleQRCode(code) {
 
@@ -342,12 +372,19 @@
             body: JSON.stringify({
               code: code
             })
+
           }
         );
 
 
       const result =
         await response.json();
+
+
+      console.log(
+        "Apps Script response:",
+        result
+      );
 
 
       displayCheckInResult(result);
@@ -357,10 +394,14 @@
 
       console.error(error);
 
+
       showResult(
         "error",
-        "Could not connect to the check-in system.<br><br>" +
+
+        "Could not connect to the check-in system." +
+        "<br><br>" +
         error.message
+
       );
 
     }
@@ -371,9 +412,9 @@
   }
 
 
-  // ------------------------------------------------------------
-  // Display check-in response
-  // ------------------------------------------------------------
+  // ============================================================
+  // DISPLAY CHECK-IN RESPONSE
+  // ============================================================
 
   function displayCheckInResult(result) {
 
@@ -385,8 +426,13 @@
       );
 
       return;
+
     }
 
+
+    // ==========================================================
+    // SUCCESS
+    // ==========================================================
 
     if (
       result.status ===
@@ -394,33 +440,71 @@
     ) {
 
       showResult(
+
         "success",
 
-        "CHECK-IN SUCCESSFUL" +
+        "<strong>CHECK-IN SUCCESSFUL</strong>" +
 
         '<div class="guest">' +
 
         "<strong>Name:</strong> " +
-        escapeHtml(result.name) +
+
+        escapeHtml(
+          result.name || ""
+        ) +
+
         "<br><br>" +
+
 
         "<strong>ID:</strong> " +
-        escapeHtml(result.id) +
+
+        escapeHtml(
+          result.idNumber || ""
+        ) +
+
         "<br><br>" +
+
 
         "<strong>Guest Type:</strong> " +
-        escapeHtml(result.guestType || "") +
+
+        escapeHtml(
+          result.guestType || ""
+        ) +
+
         "<br><br>" +
 
+
+        "<strong>Gift:</strong> " +
+
+        '<span class="gift">' +
+
+        escapeHtml(
+          result.gift || "Not Assigned"
+        ) +
+
+        "</span>" +
+
+        "<br><br>" +
+
+
         "<strong>Check-in Time:</strong> " +
-        escapeHtml(result.checkInTime || "") +
+
+        escapeHtml(
+          result.checkInTime || ""
+        ) +
 
         "</div>"
+
       );
 
       return;
+
     }
 
+
+    // ==========================================================
+    // ALREADY CHECKED IN
+    // ==========================================================
 
     if (
       result.status ===
@@ -428,29 +512,142 @@
     ) {
 
       showResult(
+
         "error",
 
-        "ALREADY CHECKED IN" +
+        "<strong>ALREADY CHECKED IN</strong>" +
 
         '<div class="guest">' +
 
         "<strong>Name:</strong> " +
-        escapeHtml(result.name) +
+
+        escapeHtml(
+          result.name || ""
+        ) +
+
         "<br><br>" +
+
 
         "<strong>ID:</strong> " +
-        escapeHtml(result.id) +
+
+        escapeHtml(
+          result.idNumber || ""
+        ) +
+
         "<br><br>" +
 
+
+        "<strong>Guest Type:</strong> " +
+
+        escapeHtml(
+          result.guestType || ""
+        ) +
+
+        "<br><br>" +
+
+
+        "<strong>Gift:</strong> " +
+
+        '<span class="gift">' +
+
+        escapeHtml(
+          result.gift || "Not Assigned"
+        ) +
+
+        "</span>" +
+
+        "<br><br>" +
+
+
         "<strong>Previous Check-in:</strong> " +
-        escapeHtml(result.checkInTime || "") +
+
+        escapeHtml(
+          result.checkInTime || ""
+        ) +
 
         "</div>"
+
       );
 
       return;
+
     }
 
+
+    // ==========================================================
+    // NOT CONFIRMED
+    // ==========================================================
+
+    if (
+      result.status ===
+      "NOT_CONFIRMED"
+    ) {
+
+      showResult(
+
+        "error",
+
+        "<strong>RSVP NOT CONFIRMED</strong>" +
+
+        '<div class="guest">' +
+
+        "<strong>Name:</strong> " +
+
+        escapeHtml(
+          result.name || ""
+        ) +
+
+        "<br><br>" +
+
+
+        "<strong>ID:</strong> " +
+
+        escapeHtml(
+          result.idNumber || ""
+        ) +
+
+        "<br><br>" +
+
+
+        "<strong>Guest Type:</strong> " +
+
+        escapeHtml(
+          result.guestType || ""
+        ) +
+
+        "<br><br>" +
+
+
+        "<strong>Gift:</strong> " +
+
+        '<span class="gift">' +
+
+        escapeHtml(
+          result.gift || "Not Assigned"
+        ) +
+
+        "</span>" +
+
+        "<br><br>" +
+
+
+        escapeHtml(
+          result.message ||
+          "Guest has not confirmed RSVP."
+        ) +
+
+        "</div>"
+
+      );
+
+      return;
+
+    }
+
+
+    // ==========================================================
+    // NOT REGISTERED
+    // ==========================================================
 
     if (
       result.status ===
@@ -459,43 +656,73 @@
 
       showResult(
         "error",
-        "NOT REGISTERED"
+        "<strong>NOT REGISTERED</strong>"
       );
 
       return;
+
     }
 
 
+    // ==========================================================
+    // OTHER ERROR
+    // ==========================================================
+
     showResult(
+
       "error",
+
       escapeHtml(
         result.message ||
         "Check-in failed."
       )
+
     );
 
   }
 
 
-  // ------------------------------------------------------------
-  // Basic HTML escaping
-  // ------------------------------------------------------------
+  // ============================================================
+  // HTML ESCAPE
+  // ============================================================
 
   function escapeHtml(value) {
 
-    return String(value || "")
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
-      .replace(/'/g, "&#039;");
+    return String(
+      value || ""
+    )
+
+      .replace(
+        /&/g,
+        "&amp;"
+      )
+
+      .replace(
+        /</g,
+        "&lt;"
+      )
+
+      .replace(
+        />/g,
+        "&gt;"
+      )
+
+      .replace(
+        /"/g,
+        "&quot;"
+      )
+
+      .replace(
+        /'/g,
+        "&#039;"
+      );
 
   }
 
 
-  // ------------------------------------------------------------
-  // Buttons
-  // ------------------------------------------------------------
+  // ============================================================
+  // BUTTONS
+  // ============================================================
 
   document
     .getElementById("startButton")
